@@ -14,7 +14,7 @@ constparties <- function(nodes, data, weights, fitted = NULL, terms = NULL, info
     } else {
         stopifnot(nrow(data) > 0L)
         stopifnot(!is.null(terms))
-        fitted <- data.frame("(response)" = model.response(model.frame(terms, data = data, 
+        fitted <- data.frame("(response)" = model.response(model.frame(terms, data = data,
                                                                        na.action = na.pass)),
                              check.names = FALSE)
     }
@@ -50,34 +50,34 @@ constparties <- function(nodes, data, weights, fitted = NULL, terms = NULL, info
 cforest <- function
 (
     formula,
-    data,   
+    data,
     weights,
-    subset, 
-    offset, 
+    subset,
+    offset,
     cluster,
     strata,
     na.action = na.pass,
     control = ctree_control(
         teststat = "quad", testtype = "Univ", mincriterion = 0,
         saveinfo = FALSE, ...),
-    ytrafo = NULL, 
-    scores = NULL, 
-    ntree = 500L, 
+    ytrafo = NULL,
+    scores = NULL,
+    ntree = 500L,
     perturb = list(replace = FALSE, fraction = 0.632),
-    mtry = ceiling(sqrt(nvar)), 
+    mtry = ceiling(sqrt(nvar)),
     applyfun = NULL,
-    cores = NULL, 
+    cores = NULL,
     trace = FALSE,
     ...
 ) {
-   
+
     ### get the call and the calling environment for .urp_tree
-    call <- match.call(expand.dots = TRUE)
+    call <- match.call(expand.dots = FALSE)
     oweights <- NULL
     if (!missing(weights))
         oweights <- weights
-    m <- match(c("formula", "data", "subset", "na.action", "offset", "cluster", 
-                 "scores", "ytrafo", "control", "converged"), names(call), 0L)
+    m <- match(c("formula", "data", "subset", "na.action", "offset", "cluster",
+                 "scores", "ytrafo", "control"), names(call), 0L)
     ctreecall <- call[c(1L, m)]
     ctreecall$doFit <- FALSE
     if (!is.null(oweights))
@@ -95,12 +95,12 @@ cforest <- function
     nvar <- sum(d$variables$z > 0)
     control$mtry <- mtry
     control$applyfun <- lapply
- 
+
     strata <- d[["(strata)"]]
     if (!is.null(strata)) {
         if (!is.factor(strata)) stop("strata is not a single factor")
     }
-    
+
     probw <- NULL
     iweights <- model.weights(model.frame(d))
     if (!is.null(oweights)) {
@@ -120,7 +120,7 @@ cforest <- function
         if (is.matrix(weights)) {
             if (ncol(weights) == ntree && nrow(weights) == N) {
                 rw <- unclass(as.data.frame(weights))
-                rw <- lapply(rw, function(w) 
+                rw <- lapply(rw, function(w)
                     rep(1:length(w), w))
                 weights <- integer(0)
             } else {
@@ -138,23 +138,23 @@ cforest <- function
     frctn <- pmin(1, sum(perturb$fraction))
 
     if (is.null(rw)) {
-        ### for honesty testing purposes only 
+        ### for honesty testing purposes only
         if (frctn == 1) {
             rw <- lapply(1:ntree, function(b) idx)
         } else {
         if (is.null(strata)) {
             size <- N
             if (!perturb$replace) size <- floor(size * frctn)
-            rw <- replicate(ntree, 
-                            sample(idx, size = size, 
+            rw <- replicate(ntree,
+                            sample(idx, size = size,
                                    replace = perturb$replace, prob = probw[idx]),
                             simplify = FALSE)
         } else {
             frac <- if (!perturb$replace) frctn else 1
-            rw <- replicate(ntree, function() 
-                  do.call("c", tapply(idx, strata[idx], 
-                          function(i) 
-                              sample(i, size = length(i) * frac, 
+            rw <- replicate(ntree, function()
+                  do.call("c", tapply(idx, strata[idx],
+                          function(i)
+                              sample(i, size = length(i) * frac,
                                      replace = perturb$replace, prob = probw[i]))))
         }
         }
@@ -171,14 +171,14 @@ cforest <- function
             size <- N
             if (!perturb$replace) size <- floor(size * frctn)
             hn <- lapply(1:ntree, function(b)
-                            sample(rw[[b]], size = size, 
+                            sample(rw[[b]], size = size,
                                    replace = perturb$replace, prob = probw[rw[[b]]]))
         } else {
             frac <- if (!perturb$replace) frctn else 1
             hn <- lapply(1:ntree, function(b)
-                  do.call("c", tapply(rw[[b]], strata[rw[[b]]], 
-                          function(i) 
-                              sample(i, size = length(i) * frac, 
+                  do.call("c", tapply(rw[[b]], strata[rw[[b]]],
+                          function(i)
+                              sample(i, size = length(i) * frac,
                                      replace = perturb$replace, prob = probw[i]))))
         }
         rw <- lapply(1:ntree, function(b) rw[[b]][!(rw[[b]] %in% hn[[b]])])
@@ -193,7 +193,7 @@ cforest <- function
     ## use RNGkind("L'Ecuyer-CMRG") to make this reproducible
     if (is.null(applyfun)) {
         applyfun <- if(is.null(cores)) {
-            lapply  
+            lapply
         } else {
             function(X, FUN, ...)
                 parallel::mclapply(X, FUN, ..., mc.set.seed = TRUE, mc.cores = cores)
@@ -201,7 +201,7 @@ cforest <- function
     }
 
     trafo <- updatefun(sort(rw[[1]]), integer(0), control, doFit = FALSE)
-    if (trace) pb <- txtProgressBar(style = 3) 
+    if (trace) pb <- txtProgressBar(style = 3)
     forest <- applyfun(1:ntree, function(b) {
         if (trace) setTxtProgressBar(pb, b/ntree)
         ret <- updatefun(sort(rw[[b]]), integer(0), control)
@@ -218,7 +218,7 @@ cforest <- function
     })
     if (trace) close(pb)
 
-    fitted <- data.frame(idx = 1:N)  
+    fitted <- data.frame(idx = 1:N)
     mf <- model.frame(d)
     fitted[[2]] <- mf[, d$variables$y, drop = TRUE]
     names(fitted)[2] <- "(response)"
@@ -234,22 +234,32 @@ cforest <- function
                         fitted = fitted, terms = d$terms$all,
                         info = list(call = match.call(), control = control))
     if (!is.null(hn))
-        ret$honest_weights <- lapply(hn, function(x) 
+        ret$honest_weights <- lapply(hn, function(x)
             as.integer(tabulate(x, nbins = length(idx))))
 
     ret$trafo <- trafo
     ret$predictf <- d$terms$z
     class(ret) <- c("cforest", class(ret))
 
+    message("[", Sys.time(), "] Precompute fdata")
+    ret$fdata = lapply(ret, fitted_node, data = ret$data)
     return(ret)
 }
 
-predict.cforest <- function(object, newdata = NULL, type = c("response", "prob", "weights", "node"), 
+predict.cforest <- function(object, newdata = NULL, type = c("response", "prob", "weights", "node"),
                             OOB = FALSE, FUN = NULL, simplify = TRUE, scale = TRUE, ...) {
 
     responses <- object$fitted[["(response)"]]
     forest <- object$nodes
-    nd <- object$data
+
+    if ("data_skeleton" %in% names(object))
+      cl = "object$data_skeleton"
+    else
+      cl = "object$data"
+
+    message("[", as.character(Sys.time()), "] Use ", cl, "")
+    nd <- eval(parse(text = cl))
+
     vmatch <- 1:ncol(nd)
     NOnewdata <- TRUE
     if (!is.null(newdata)) {
@@ -273,7 +283,7 @@ predict.cforest <- function(object, newdata = NULL, type = c("response", "prob",
 
     ### extract weights: use honest weights when available
     if (is.null(object$honest_weights)) {
-        rw <- object$weights 
+        rw <- object$weights
     } else {
         rw <- object$honest_weights
         OOB <- FALSE
@@ -284,13 +294,14 @@ predict.cforest <- function(object, newdata = NULL, type = c("response", "prob",
     if (!is.null(object$info))
         applyfun <- object$info$control$applyfun
 
-    fdata <- lapply(forest, fitted_node, data = object$data, ...)
+    #if (!is.null(object$browse)) browser()
+    fdata = object$fdata
+    #fdata <- lapply(forest, fitted_node, data = object$data, ...)
     if (NOnewdata && OOB) {
         fnewdata <- list()
     } else {
         fnewdata <- lapply(forest, fitted_node, data = nd, vmatch = vmatch, ...)
     }
-
     w <- .rfweights(fdata, fnewdata, rw, scale)
 
 #    for (b in 1:length(forest)) {
@@ -314,7 +325,7 @@ predict.cforest <- function(object, newdata = NULL, type = c("response", "prob",
         rownames(ret) <- rownames(responses)
         return(ret)
     }
-    
+
     pfun <- function(response) {
 
         if (is.null(FUN)) {
@@ -335,7 +346,7 @@ predict.cforest <- function(object, newdata = NULL, type = c("response", "prob",
         ret <- as.array(ret)
         dim(ret) <- NULL
         names(ret) <- nam
-         
+
         if (simplify)
             ret <- .simplify_pred(ret, names(ret), names(ret))
         ret
